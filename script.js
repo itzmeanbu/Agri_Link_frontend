@@ -1,4 +1,4 @@
-const API_URL = window.AGRILINK_API_URL || 'http://localhost:5000';
+const API_URL = window.AGRILINK_API_URL || 'https://agri-link-backend-pae2.onrender.com';
 document.body.innerHTML=document.body.innerHTML.replace(/mandi/gi,'regional');
 const toast = document.getElementById('toast');
 function showToast(message){toast.textContent=message;toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),2800)}
