@@ -69,7 +69,14 @@ const TA = {
   'Processing photos…': 'படங்களை செயலாக்குகிறது…',
   'Could not read one of the photos': 'ஒரு படத்தைப் படிக்க முடியவில்லை',
   'Saved successfully': 'வெற்றிகரமாக சேமிக்கப்பட்டது', 'You are signed out': 'நீங்கள் வெளியேறிவிட்டீர்கள்',
-  'Back to': 'திரும்பு'
+  'Back to': 'திரும்பு',
+  'Region': 'பகுதி', 'optional': 'விருப்பமானது',
+  'No approved buyers yet.': 'இதுவரை அங்கீகரிக்கப்பட்ட வாங்குபவர்கள் இல்லை.',
+  'No equipment listed yet.': 'இதுவரை உபகரணங்கள் பட்டியலிடப்படவில்லை.',
+  'Delete selected': 'தேர்ந்தெடுத்தவற்றை நீக்கு',
+  'Remove this equipment listing?': 'இந்த உபகரண பட்டியலை நீக்கவா?',
+  'Selected records deleted': 'தேர்ந்தெடுத்த பதிவுகள் நீக்கப்பட்டன',
+  'Delete the selected records? This cannot be undone from here.': 'தேர்ந்தெடுத்த பதிவுகளை நீக்கவா? இதை இங்கிருந்து மீட்டெடுக்க முடியாது.'
 };
 function t(s) { return lang === 'ta' ? (TA[s] || s) : s }
 
@@ -129,7 +136,7 @@ function home() {
 function authPage(admin = false) {
   let role = new URLSearchParams(location.hash.split('?')[1] || '').get('role') || 'farmer',
     reg = location.hash.startsWith('#/register');
-  app.innerHTML = `<section class="auth"><form class="authbox" id="auth"><a class="brand" href="#/"><img class="logo" src="${C.logo}" alt="${C.name} logo"><span>← ${t('Back to')} ${C.name}</span></a><h1>${admin ? t('Admin sign in') : reg ? t('Create an account') : t('Welcome back')}</h1>${admin ? `<p class="muted">${t('Sign in with your administrator account.')}</p>` : ''}${reg ? `<div class="roles">${['farmer', 'fpo', 'buyer'].map(r => `<button type="button" class="role ${role === r ? 'selected' : ''}" data-role="${r}"><b>${r.toUpperCase()}</b><br><small>${r === 'farmer' ? t('Sell harvests') : r === 'fpo' ? t('Coordinate members') : t('Source crops')}</small></button>`).join('')}</div><div class="field"><label>${t('Name')}<input name="name" required></label></div>` : ''}<div class="field"><label>${t('Email')}<input type="email" name="email" required></label></div><div class="field"><label>${t('Password')}<input type="password" name="password" minlength="6" required></label></div>${reg ? `<div class="field"><label>${t('Phone')}<input name="phone"></label></div>` : ''}<button class="button" style="width:100%;margin-top:10px">${reg ? t('Submit for approval') : t('Log in')}</button>${!admin ? `<p class="muted">${reg ? `${t('Already registered?')} <a href="#/login">${t('Log in')}</a>` : `${t('New here?')} <a href="#/register">${t('Create an account')}</a>`}</p>` : ''}</form></section>`;
+  app.innerHTML = `<section class="auth"><form class="authbox" id="auth"><a class="brand" href="#/"><img class="logo" src="${C.logo}" alt="${C.name} logo"><span>← ${t('Back to')} ${C.name}</span></a><h1>${admin ? t('Admin sign in') : reg ? t('Create an account') : t('Welcome back')}</h1>${admin ? `<p class="muted">${t('Sign in with your administrator account.')}</p>` : ''}${reg ? `<div class="roles">${['farmer', 'fpo', 'buyer'].map(r => `<button type="button" class="role ${role === r ? 'selected' : ''}" data-role="${r}"><b>${r.toUpperCase()}</b><br><small>${r === 'farmer' ? t('Sell harvests') : r === 'fpo' ? t('Coordinate members') : t('Source crops')}</small></button>`).join('')}</div><div class="field"><label>${t('Name')}<input name="name" required></label></div>` : ''}<div class="field"><label>${t('Email')}<input type="email" name="email" required></label></div><div class="field"><label>${t('Password')}<input type="password" name="password" minlength="6" required></label></div>${reg ? `<div class="field"><label>${t('Phone')}<input name="phone"></label></div><div class="field"><label>${t('Region')} <small class="muted">(${t('optional')})</small><input name="region"></label></div>` : ''}<button class="button" style="width:100%;margin-top:10px">${reg ? t('Submit for approval') : t('Log in')}</button>${!admin ? `<p class="muted">${reg ? `${t('Already registered?')} <a href="#/login">${t('Log in')}</a>` : `${t('New here?')} <a href="#/register">${t('Create an account')}</a>`}</p>` : ''}</form></section>`;
   document.querySelectorAll('[data-role]').forEach(b => b.onclick = () => { role = b.dataset.role; authPage(false) });
   $('#auth').onsubmit = async e => {
     e.preventDefault();
@@ -156,9 +163,17 @@ async function publicPage(type) {
   }[type], body = '';
   try {
     if (type === 'market') body = `<p class="notice">${t('Provider credentials are not configured. Prices shown are demo/fallback data, updated today.')}</p><div class="grid">${demo.prices.map(p => `<article class="card"><h3>${p.crop}</h3><div class="price">₹${p.price}</div><p>${p.region} · ${p.trend}</p></article>`).join('')}</div>`;
-    else if (type === 'buyers') body = `<div class="grid">${demo.buyers.map(b => `<article class="card"><h3>${b.name}</h3><p>${b.location}</p><span class="badge approved">${t('Verified buyer')}</span><p>${t('Demand:')} ${b.demand}</p><a class="button" href="#/register?role=farmer">${t('Contact after login')}</a></article>`).join('')}</div>`;
+    else if (type === 'buyers') {
+      // Real approved buyer accounts — no more hardcoded demo names.
+      let buyers = await api('/buyers');
+      body = buyers.length ? `<div class="grid">${buyers.map(b => `<article class="card"><h3>${b.name}</h3>${b.region ? `<p>${b.region}</p>` : ''}<span class="badge approved">${t('Verified buyer')}</span><a class="button" href="#/register?role=farmer">${t('Contact after login')}</a></article>`).join('')}</div>` : `<div class="empty">${t('No approved buyers yet.')}</div>`
+    }
     else if (type === 'schemes') body = `<div class="list">${demo.schemes.map(s => `<article class="card"><h3>${s.title}</h3><p class="muted">${s.text}</p><a class="button" target="_blank" rel="noopener" href="${s.url}">${t('Open official site')}</a></article>`).join('')}</div>`;
-    else if (type === 'equipment') body = `<div class="grid">${demo.equipment.map(x => `<article class="card"><h3>${x.name}</h3><p>${x.ownerType} · ${x.location}</p><div class="price">₹${x.price}<small>/day</small></div><span class="badge approved">${x.availability}</span><p><a class="button" href="#/register">${t('Request / contact')}</a></p></article>`).join('')}</div>`;
+    else if (type === 'equipment') {
+      // Real tool listings, managed by the admin only.
+      let items = await api('/equipment/public');
+      body = items.length ? `<div class="grid">${items.map(x => `<article class="card">${x.photos?.length ? `<img class="lot-photo" src="${x.photos[0]}" alt="${x.name}">` : ''}<h3>${x.name}</h3><p>${[x.type, x.location].filter(Boolean).join(' · ')}</p>${x.price ? `<div class="price">₹${x.price}<small>/day</small></div>` : ''}${x.availability ? `<span class="badge approved">${x.availability}</span>` : ''}<p><a class="button" href="#/register">${t('Request / contact')}</a></p></article>`).join('')}</div>` : `<div class="empty">${t('No equipment listed yet.')}</div>`
+    }
     else if (type === 'marketplace') {
       let lots = await api('/lots'), canOffer = session && session.user.role === 'buyer';
       body = lots.length ? `<div class="grid">${lots.map(l => `<article class="card">${l.photos?.length ? `<img class="lot-photo" src="${l.photos[0]}" alt="${l.crop}">` : ''}<h3>${l.crop} · ${l.grade || 'Standard'}</h3><p>${l.quantity} quintals · ${l.region}</p><div class="price">₹${l.expectedPrice || '—'}</div>${canOffer ? `<button class="button offerBtn" data-id="${l._id}" data-crop="${l.crop}" data-qty="${l.quantity}" data-price="${l.expectedPrice || ''}">${t('Make offer')}</button>` : session ? `<p class="muted">${t('Only buyer accounts can make offers.')}</p>` : `<a class="button" href="#/register?role=buyer">${t('Log in as a buyer to offer')}</a>`}</article>`).join('')}</div>` : `<div class="empty">${t('No active crop lots yet. Be the first farmer to list a crop.')}</div>`
@@ -183,9 +198,12 @@ function offerModal(d) {
   }
 }
 
+// Equipment/tool rental is a service AgriLink itself provides — only the
+// admin menu manages it (add/edit/remove listings). Farmers and FPOs browse
+// available tools through the public "Equipment" nav link instead.
 const menus = {
-  farmer: ['Overview', 'Crop lots', 'Market intelligence', 'Buyer matches', 'Offers', 'Orders', 'Equipment', 'Grievances', 'Notifications', 'Profile'],
-  fpo: ['Overview', 'Members', 'Crop lots', 'Offers', 'Orders', 'Equipment', 'Transactions', 'Profile'],
+  farmer: ['Overview', 'Crop lots', 'Market intelligence', 'Buyer matches', 'Offers', 'Orders', 'Grievances', 'Notifications', 'Profile'],
+  fpo: ['Overview', 'Members', 'Crop lots', 'Offers', 'Orders', 'Transactions', 'Profile'],
   buyer: ['Overview', 'Requirements', 'Browse lots', 'Offers', 'Orders', 'Grievances', 'Notifications', 'Profile'],
   admin: ['Overview', 'Farmers', 'FPOs', 'Buyers', 'Crop lots', 'Market prices', 'Offers', 'Orders', 'Logistics', 'Payments', 'Grievances', 'Notifications', 'Schemes', 'Equipment', 'Recycle bin', 'Settings']
 };
@@ -193,7 +211,7 @@ const menus = {
 function dash() {
   if (!session) { location.hash = '#/login'; return }
   let role = session.user.role, items = menus[role], page = (location.hash.split('/')[2] || 'overview').replaceAll('%20', ' ');
-  app.innerHTML = nav() + `<div class="layout"><aside class="side">${items.map(x => `<a class="${x.toLowerCase() === page ? 'active' : ''}" href="#/dashboard/${encodeURIComponent(x.toLowerCase())}">${t(x)}</a>`).join('')}<a href="#/logout">${t('Sign out')}</a></aside><main class="main"><div class="head"><div><p class="eyebrow">${role} ${t('workspace')}</p><h1>${tPage(page)}</h1></div>${['crop lots', 'requirements', 'equipment', 'grievances'].includes(page) ? `<button class="button" id="new">${t('Add new')}</button>` : ''}</div><div id="content">${t('Loading…')}</div></main></div>`;
+  app.innerHTML = nav() + `<div class="layout"><aside class="side">${items.map(x => `<a class="${x.toLowerCase() === page ? 'active' : ''}" href="#/dashboard/${encodeURIComponent(x.toLowerCase())}">${t(x)}</a>`).join('')}<a href="#/logout">${t('Sign out')}</a></aside><main class="main"><div class="head"><div><p class="eyebrow">${role} ${t('workspace')}</p><h1>${tPage(page)}</h1></div>${(['crop lots', 'requirements', 'grievances'].includes(page) || (page === 'equipment' && role === 'admin')) ? `<button class="button" id="new">${t('Add new')}</button>` : ''}</div><div id="content">${t('Loading…')}</div></main></div>`;
   loadDash(role, page);
   $('#new')?.addEventListener('click', () => formModal(page))
 }
@@ -233,21 +251,40 @@ function table(el, rows, page, role) {
   let keys = Object.keys(rows[0]).filter(k => !['_id', '__v', 'password', 'ownerId', 'deletedAt', 'updatedAt', 'photos'].includes(k)).slice(0, 6);
   let isUserMgmt = role === 'admin' && ['farmers', 'fpos', 'buyers'].includes(page);
   let isLotMgmt = role === 'admin' && page === 'crop lots';
-  let showPhoto = page === 'crop lots' && rows[0].photos !== undefined;
+  let isEquipmentMgmt = role === 'admin' && page === 'equipment';
+  let showPhoto = (page === 'crop lots' || page === 'equipment') && rows[0].photos !== undefined;
   let isOrderMgmt = ['farmer', 'fpo', 'admin'].includes(role) && (page === 'orders' || page === 'logistics');
+  // Any page with checkboxes (user management or equipment management) gets
+  // the "select all" + bulk delete toolbar.
+  let hasBulkPick = isUserMgmt || isEquipmentMgmt;
   let actionCell = x => isUserMgmt
     ? `<button class="ghost status" data-status="approved">${t('Approve')}</button> <button class="danger status" data-status="suspended">${t('Suspend')}</button>`
-    : isLotMgmt ? `<button class="danger remove">${t('Remove')}</button>`
+    : isLotMgmt || isEquipmentMgmt ? `<button class="danger remove">${t('Remove')}</button>`
     : isOrderMgmt ? `<select class="orderStatus">${C.orderStatuses.map(s => `<option ${s === x.status ? 'selected' : ''}>${s}</option>`).join('')}</select> <button class="ghost updateOrder">${t('Update')}</button>`
     : `<button class="ghost view">${t('View')}</button>`;
-  el.innerHTML = `<div class="toolbar"><input id="find" placeholder="${t('Search')} ${tPage(page)}">${isUserMgmt ? `<button class="button" id="bulk">${t('Bulk approve selected')}</button>` : ''}</div><table><thead><tr>${isUserMgmt ? '<th><input id="all" type="checkbox"></th>' : ''}${showPhoto ? '<th>Photo</th>' : ''}${keys.map(k => `<th>${k}</th>`).join('')}<th>Actions</th></tr></thead><tbody>${rows.map((x, i) => `<tr data-id="${x._id}" data-idx="${i}">${isUserMgmt ? '<td><input class="pick" type="checkbox"></td>' : ''}${showPhoto ? `<td>${x.photos?.length ? `<img class="thumb" src="${x.photos[0]}">` : '—'}</td>` : ''}${keys.map(k => `<td>${k.includes('status') ? `<span class="badge ${String(x[k]).replaceAll(' ', '')}">${x[k]}</span>` : x[k] ?? '—'}</td>`).join('')}<td>${actionCell(x)}</td></tr>`).join('')}</tbody></table>`;
+  el.innerHTML = `<div class="toolbar"><input id="find" placeholder="${t('Search')} ${tPage(page)}">${isUserMgmt ? `<button class="button" id="bulk">${t('Bulk approve selected')}</button>` : ''}${hasBulkPick ? `<button class="danger" id="bulkDelete">${t('Delete selected')}</button>` : ''}</div><table><thead><tr>${hasBulkPick ? '<th><input id="all" type="checkbox"></th>' : ''}${showPhoto ? '<th>Photo</th>' : ''}${keys.map(k => `<th>${k}</th>`).join('')}<th>Actions</th></tr></thead><tbody>${rows.map((x, i) => `<tr data-id="${x._id}" data-idx="${i}">${hasBulkPick ? '<td><input class="pick" type="checkbox"></td>' : ''}${showPhoto ? `<td>${x.photos?.length ? `<img class="thumb" src="${x.photos[0]}">` : '—'}</td>` : ''}${keys.map(k => `<td>${k.includes('status') ? `<span class="badge ${String(x[k]).replaceAll(' ', '')}">${x[k]}</span>` : x[k] ?? '—'}</td>`).join('')}<td>${actionCell(x)}</td></tr>`).join('')}</tbody></table>`;
   $('#all') && ($('#all').onchange = e => document.querySelectorAll('.pick').forEach(x => x.checked = e.target.checked));
   $('#find').oninput = e => document.querySelectorAll('tbody tr').forEach(tr => tr.hidden = !tr.innerText.toLowerCase().includes(e.target.value.toLowerCase()));
   document.querySelectorAll('.status').forEach(b => b.onclick = async () => { try { await api('/admin/users/' + b.closest('tr').dataset.id + '/status', { method: 'PATCH', body: JSON.stringify({ approvalStatus: b.dataset.status }) }); toast(t('Account updated')); dash() } catch (e) { toast(e.message) } });
   document.querySelectorAll('.view').forEach(b => b.onclick = () => { let r = rows[b.closest('tr').dataset.idx]; alert(JSON.stringify(r, null, 2)) });
-  document.querySelectorAll('.remove').forEach(b => b.onclick = async () => { if (!confirm(t('Remove this listing? It will be hidden from the marketplace.'))) return; try { await api('/lots/' + b.closest('tr').dataset.id, { method: 'DELETE' }); toast(t('Listing removed')); dash() } catch (e) { toast(e.message) } });
+  document.querySelectorAll('.remove').forEach(b => b.onclick = async () => {
+    if (!confirm(isEquipmentMgmt ? t('Remove this equipment listing?') : t('Remove this listing? It will be hidden from the marketplace.'))) return;
+    try { await api((isEquipmentMgmt ? '/equipment/' : '/lots/') + b.closest('tr').dataset.id, { method: 'DELETE' }); toast(t('Listing removed')); dash() } catch (e) { toast(e.message) }
+  });
   document.querySelectorAll('.updateOrder').forEach(b => b.onclick = async () => { let tr = b.closest('tr'), status = tr.querySelector('.orderStatus').value; try { await api('/orders/' + tr.dataset.id, { method: 'PATCH', body: JSON.stringify({ status }) }); toast(t('Order updated — buyer notified')); dash() } catch (e) { toast(e.message) } });
-  $('#bulk') && ($('#bulk').onclick = async () => { let ids = [...document.querySelectorAll('.pick:checked')].map(x => x.closest('tr').dataset.id); if (!ids.length) return toast(t('Select at least one record')); try { await api('/admin/users/bulk/status', { method: 'PATCH', body: JSON.stringify({ ids, approvalStatus: 'approved' }) }); toast(t('Accounts approved')); dash() } catch (e) { toast(e.message) } })
+  $('#bulk') && ($('#bulk').onclick = async () => { let ids = [...document.querySelectorAll('.pick:checked')].map(x => x.closest('tr').dataset.id); if (!ids.length) return toast(t('Select at least one record')); try { await api('/admin/users/bulk/status', { method: 'PATCH', body: JSON.stringify({ ids, approvalStatus: 'approved' }) }); toast(t('Accounts approved')); dash() } catch (e) { toast(e.message) } });
+  // Select-all + delete: works for both the user-management pages
+  // (Farmers/FPOs/Buyers) and the admin Equipment page.
+  $('#bulkDelete') && ($('#bulkDelete').onclick = async () => {
+    let ids = [...document.querySelectorAll('.pick:checked')].map(x => x.closest('tr').dataset.id);
+    if (!ids.length) return toast(t('Select at least one record'));
+    if (!confirm(t('Delete the selected records? This cannot be undone from here.'))) return;
+    try {
+      if (isUserMgmt) await api('/admin/users/bulk', { method: 'DELETE', body: JSON.stringify({ ids }) });
+      else await Promise.all(ids.map(id => api('/equipment/' + id, { method: 'DELETE' })));
+      toast(t('Selected records deleted')); dash()
+    } catch (e) { toast(e.message) }
+  })
 }
 
 function compressImage(file) {
@@ -275,7 +312,7 @@ function formModal(type) {
     : ['subject', 'description'];
   let reqFields = { 'crop lots': ['crop', 'quantity'], equipment: ['name'], requirements: ['crop', 'quantity'], grievances: ['subject'] }[type] || [];
   let numFields = ['quantity', 'expectedPrice', 'price'], dateFields = ['harvestDate'];
-  let withPhotos = type === 'crop lots', photos = [];
+  let withPhotos = type === 'crop lots' || type === 'equipment', photos = [];
   let m = document.createElement('div'); m.className = 'modal';
   m.innerHTML = `<div><h2>${t('Add')} ${tPage(type)}</h2><form id="form">${fields.map(f => `<div class="field"><label>${tf(f)}<input name="${f}" type="${numFields.includes(f) ? 'number' : dateFields.includes(f) ? 'date' : 'text'}" ${reqFields.includes(f) ? 'required' : ''}></label></div>`).join('')}${withPhotos ? `<div class="field"><label>Photos <small class="muted">(up to 4)</small></label><div id="photoPreview" class="photo-preview"></div><input id="photoInput" type="file" accept="image/*" multiple></div>` : ''}<button class="button">${t('Save')}</button> <button type="button" class="ghost" id="cancel">${t('Cancel')}</button></form></div>`;
   document.body.append(m);
