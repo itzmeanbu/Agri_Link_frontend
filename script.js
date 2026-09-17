@@ -4,7 +4,8 @@ const toast = document.getElementById('toast');
 function showToast(message){toast.textContent=message;toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),2800)}
 document.querySelectorAll('[data-scroll]').forEach(button=>button.addEventListener('click',()=>document.getElementById(button.dataset.scroll)?.scrollIntoView({behavior:'smooth'})));
 document.getElementById('createLot').addEventListener('click',()=>showToast('Crop lot form is ready — connect your farmer account to continue.'));
-document.getElementById('loginBtn').addEventListener('click',()=>showToast('Login flow can connect to your existing backend authentication.'));
+document.getElementById('loginBtn').addEventListener('click',()=>location.href='login.html');
+const registerLink=document.createElement('a');registerLink.href='register.html';registerLink.textContent='Create account';registerLink.className='secondary';document.querySelector('.nav').append(registerLink);
 document.querySelectorAll('.secondary').forEach(button=>button.addEventListener('click',()=>showToast('This marketplace action is available from your dashboard.')));
 fetch(`${API_URL}/api/health`).then(response=>response.ok&&showToast('AgriLink services are connected.')).catch(()=>{});
 document.querySelectorAll('a[href^="#"]').forEach(link=>link.addEventListener('click',event=>{const id=link.getAttribute('href').slice(1);if(id&&document.getElementById(id)){event.preventDefault();document.getElementById(id).scrollIntoView({behavior:'smooth'})}}));
