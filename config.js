@@ -1,1 +1,1 @@
-window.AGRILINK={name:'AgriLink',logo:'logo.jpg',apiBase:window.AGRILINK_API_URL||'http://localhost:5000',orderStatuses:['Pending','Confirmed','Shipped','Out for Delivery','Delivered','Cancelled'],paymentStatuses:['Pending','Paid','Failed','Refunded']};
+window.AGRILINK={name:'AgriLink',logo:'logo.jpg',apiBase:'https://your-backend-name.onrender.com',orderStatuses:['Pending','Confirmed','Shipped','Out for Delivery','Delivered','Cancelled'],paymentStatuses:['Pending','Paid','Failed','Refunded']};
